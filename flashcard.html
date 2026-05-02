@@ -68,7 +68,12 @@
         }
         button:active { opacity: 0.8; }
         .btn-secondary { background-color: #E2E8F0; color: #4A5568; }
-        .btn-api { background-color: #ECC94B; color: #744210; font-size: 14px; padding: 10px; margin-bottom: 12px;}
+        
+        /* 雙按鈕並排設計 */
+        .tools-row { display: flex; gap: 10px; margin-bottom: 12px; }
+        .btn-api { background-color: #ECC94B; color: #744210; font-size: 14px; padding: 10px; margin-bottom: 0; flex: 1;}
+        .btn-dict { background-color: #1A365D; color: #FFFFFF; font-size: 14px; padding: 10px; margin-bottom: 0; flex: 1;}
+        
         .btn-danger { background-color: var(--danger-color); }
         .btn-success { background-color: var(--success-color); }
         
@@ -96,12 +101,15 @@
 
     <!-- 儲存單字區塊 -->
     <div class="section">
-        <input type="text" id="eng-input" placeholder="英文單字 (必填)">
+        <input type="text" id="eng-input" placeholder="英文單字 (建議輸入原型)">
         <input type="text" id="chi-input" placeholder="中文意思 (必填)">
         
-        <!-- 新增 API 自動抓例句按鈕 -->
-        <button onclick="fetchExample()" class="btn-api">✨ 自動找例句 (需連網)</button>
-        <textarea id="sentence-input" placeholder="輸入例句或點擊上方按鈕自動生成 (選填)"></textarea>
+        <div class="tools-row">
+            <button onclick="fetchExample()" class="btn-api">✨ 自動找例句</button>
+            <button onclick="openDictionary()" class="btn-dict">📖 查劍橋字典</button>
+        </div>
+        
+        <textarea id="sentence-input" placeholder="點擊左方自動生成，或點擊右方查字典後貼上例句..."></textarea>
         
         <button onclick="saveWord()">儲存至單字集</button>
         <div class="status" id="db-status"></div>
@@ -148,7 +156,7 @@
         return wordsDb;
     }
 
-    // 2. 儲存單字 (加入重複檢查與覆蓋邏輯)
+    // 2. 儲存單字
     function saveWord() {
         const eng = document.getElementById('eng-input').value.trim();
         const chi = document.getElementById('chi-input').value.trim();
@@ -160,29 +168,21 @@
         }
 
         let words = loadWords();
-        
-        // 檢查是否重複 (忽略大小寫)
         const existingIndex = words.findIndex(w => w.eng.toLowerCase() === eng.toLowerCase());
 
         if (existingIndex !== -1) {
-            // 單字已存在，詢問是否覆蓋
             const confirmOverwrite = confirm(`單字庫中已經有「${eng}」了！\n你要用現在輸入的意思和例句覆蓋舊資料嗎？`);
             if (confirmOverwrite) {
-                // 覆蓋舊資料
                 words[existingIndex] = { eng, chi, sentence, isWeak: true };
-                alert(`已成功更新「${eng}」的資料！`);
             } else {
-                // 不覆蓋，直接結束執行
                 return;
             }
         } else {
-            // 全新單字，直接加入
             words.push({ eng, chi, sentence, isWeak: true });
         }
 
         localStorage.setItem('myVocab', JSON.stringify(words));
 
-        // 清空輸入框
         document.getElementById('eng-input').value = '';
         document.getElementById('chi-input').value = '';
         document.getElementById('sentence-input').value = '';
@@ -190,27 +190,25 @@
         speakText(eng);
     }
 
-    // 3. 自動抓取例句 (串接 Free Dictionary API)
+    // 3A. 自動抓取例句 (API)
     async function fetchExample() {
         const eng = document.getElementById('eng-input').value.trim();
         const sentenceInput = document.getElementById('sentence-input');
 
         if (!eng) {
-            alert('請先輸入英文單字，我才能幫你找例句喔！');
+            alert('請先輸入英文單字！(盡量輸入原型，例如 run 而非 running)');
             return;
         }
 
-        sentenceInput.placeholder = "正在網路上搜尋例句中...";
+        sentenceInput.placeholder = "正在搜尋中...";
         
         try {
-            // 呼叫開源免費字典 API
             const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${eng}`);
             if (!response.ok) throw new Error('API 找不到單字');
             
             const data = await response.json();
             let foundExample = '';
 
-            // 拆解 API 回傳的 JSON 結構，尋找第一句可用的例句
             for (let meaning of data[0].meanings) {
                 for (let def of meaning.definitions) {
                     if (def.example) {
@@ -224,13 +222,24 @@
             if (foundExample) {
                 sentenceInput.value = foundExample;
             } else {
-                alert('這本開源字典裡剛好沒有收錄這個單字的例句，請換個單字或手動輸入。');
-                sentenceInput.placeholder = "輸入例句或點擊上方按鈕自動生成 (選填)";
+                alert('這本開源字典裡剛好沒有這個單字的例句，建議點擊右方的「查劍橋字典」。');
+                sentenceInput.placeholder = "點擊左方自動生成，或點擊右方查字典後貼上例句...";
             }
         } catch (error) {
-            alert('抓取例句失敗！請確認手機是否有連上網路，或是單字拼錯了。');
-            sentenceInput.placeholder = "輸入例句或點擊上方按鈕自動生成 (選填)";
+            alert('抓不到例句！可能 API 沒收錄這個字，或是拼字有誤。建議改用右方的「查劍橋字典」功能。');
+            sentenceInput.placeholder = "點擊左方自動生成，或點擊右方查字典後貼上例句...";
         }
+    }
+
+    // 3B. 一鍵開啟劍橋字典
+    function openDictionary() {
+        const eng = document.getElementById('eng-input').value.trim();
+        if (!eng) {
+            alert('請先輸入你要查的英文單字！');
+            return;
+        }
+        // 開啟新分頁，直接導向劍橋字典英漢繁體版
+        window.open(`https://dictionary.cambridge.org/dictionary/english-chinese-traditional/${encodeURIComponent(eng)}`, '_blank');
     }
 
     // 4. 隨機出題
