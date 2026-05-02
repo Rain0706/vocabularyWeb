@@ -15,21 +15,14 @@
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-color);
-            margin: 0;
-            padding: 15px;
-            color: #2D3748;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            background-color: var(--bg-color); margin: 0; padding: 15px; color: #2D3748; display: flex; flex-direction: column; align-items: center;
         }
         .container { width: 100%; max-width: 450px; }
         h1 { text-align: center; color: var(--primary-color); font-size: 22px; margin-bottom: 20px; }
-        .section {
-            background-color: var(--card-bg); border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        }
-        input[type="text"], textarea {
-            width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid var(--border-color); border-radius: 8px; box-sizing: border-box; font-size: 16px; font-family: inherit;
+        .section { background-color: var(--card-bg); border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        
+        input[type="text"], textarea, select {
+            width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid var(--border-color); border-radius: 8px; box-sizing: border-box; font-size: 16px; font-family: inherit; background-color: white;
         }
         textarea { resize: vertical; min-height: 80px; }
         button {
@@ -46,16 +39,19 @@
         .btn-api { background-color: #ECC94B; color: #744210; font-size: 14px; padding: 10px; margin-bottom: 0; flex: 1;}
         .btn-dict { background-color: #1A365D; color: #FFFFFF; font-size: 14px; padding: 10px; margin-bottom: 0; flex: 1;}
         
-        /* 編輯模式提示 */
         #edit-mode-banner { display: none; background-color: #FEFCBF; color: #B7791F; padding: 10px; border-radius: 8px; margin-bottom: 12px; text-align: center; font-weight: bold; font-size: 14px; }
         
         /* 出題區 */
         #quiz-area { display: none; text-align: center; }
-        #question-word { font-size: 36px; font-weight: bold; margin: 15px 0; color: #1A202C; }
-        .speech-btn { background: none; color: var(--primary-color); border: 2px solid var(--primary-color); padding: 8px 16px; border-radius: 20px; width: auto; font-size: 14px; margin-bottom: 20px; }
+        #question-word { font-size: 32px; font-weight: bold; margin: 15px 0; color: #1A202C; }
+        .speech-btn { background: none; color: var(--primary-color); border: 2px solid var(--primary-color); padding: 8px 16px; border-radius: 20px; width: auto; font-size: 14px; margin-bottom: 10px; }
+        
+        #spelling-input-area { display: none; margin-bottom: 15px; }
+        #spelling-input { text-align: center; font-size: 18px; border: 2px dashed var(--primary-color); }
+        
         #answer-area { display: none; margin-top: 20px; border-top: 1px dashed var(--border-color); padding-top: 20px; }
         #answer-word { font-size: 24px; color: var(--danger-color); font-weight: bold; margin-bottom: 10px; }
-        #answer-sentence { font-size: 16px; color: #4A5568; margin-bottom: 20px; font-style: italic; line-height: 1.5; text-align: left;}
+        #answer-sentence { font-size: 16px; color: #4A5568; margin-bottom: 10px; font-style: italic; line-height: 1.5; text-align: left;}
         .action-buttons { display: flex; gap: 10px; }
         .action-buttons button { margin-bottom: 0; }
         
@@ -96,29 +92,42 @@
 
     <!-- 出題與測驗區塊 -->
     <div class="section">
+        <select id="quiz-mode">
+            <option value="en2zh">模式：看英文 ➔ 猜中文</option>
+            <option value="zh2en">模式：看中文 ➔ 拼英文 (推薦加強寫作)</option>
+        </select>
         <button onclick="generateQuiz()" class="btn-secondary">🎲 隨機出題 (優先考弱點)</button>
         
         <div id="quiz-area">
             <div id="weak-tag" class="tag" style="display: none;">🔥 待加強單字</div>
             <div id="question-word"></div>
-            <button class="speech-btn" onclick="speakWord()">🔊 聽發音</button>
             
-            <button id="show-ans-btn" onclick="showAnswer()">👀 顯示答案與例句</button>
+            <button id="speak-word-btn" class="speech-btn" onclick="speakWord()">🔊 聽發音</button>
+            
+            <!-- 中翻英模式下的拼字測試框 -->
+            <div id="spelling-input-area">
+                <input type="text" id="spelling-input" placeholder="在此試拼英文，再點擊看答案" autocomplete="off">
+            </div>
+            
+            <button id="show-ans-btn" onclick="showAnswer()">👀 顯示答案</button>
             
             <div id="answer-area">
                 <div id="answer-word"></div>
                 <div id="answer-sentence"></div>
                 
-                <div class="status" style="margin-bottom:10px;">你記得這個單字嗎？</div>
+                <!-- 新增：例句發音按鈕 -->
+                <button id="speak-sentence-btn" class="speech-btn" style="margin-bottom:20px; display:none;" onclick="speakSentence()">🔊 唸出例句</button>
+                
+                <div class="status" style="margin-bottom:10px;">這題答得順利嗎？</div>
                 <div class="action-buttons">
-                    <button class="btn-danger" onclick="markWord(false)">忘記了 / 待加強</button>
+                    <button class="btn-danger" onclick="markWord(false)">待加強</button>
                     <button class="btn-success" onclick="markWord(true)">記住了！</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 管理與備份區塊 -->
+    <!-- 管理與備份區塊 (維持原樣) -->
     <div class="section">
         <div class="tools-row">
             <button onclick="toggleWordList()" class="btn-secondary" style="margin-bottom:0;">📋 瀏覽單字本</button>
@@ -128,68 +137,49 @@
             <button onclick="document.getElementById('import-file').click()" class="btn-api" style="background:#4A5568; color:white;">📂 還原匯入</button>
             <input type="file" id="import-file" style="display:none;" accept=".json" onchange="importData(event)">
         </div>
-        
-        <!-- 單字列表 -->
-        <div id="word-list-container">
-            <!-- 列表內容會由 JS 動態生成 -->
-        </div>
+        <div id="word-list-container"></div>
     </div>
 </div>
 
 <script>
-    document.addEventListener("DOMContentLoaded", () => {
-        updateStatus();
-    });
+    document.addEventListener("DOMContentLoaded", () => { updateStatus(); });
 
     let currentQuizWordIndex = null;
-    let editingWordIndex = null; // 紀錄目前正在修改的單字索引
+    let editingWordIndex = null; 
     let wordsDb = [];
 
     function loadWords() {
         wordsDb = JSON.parse(localStorage.getItem('myVocab') || '[]');
         wordsDb = wordsDb.map(w => ({
-            ...w,
-            sentence: w.sentence || '',
-            isWeak: w.isWeak !== undefined ? w.isWeak : true 
+            ...w, sentence: w.sentence || '', isWeak: w.isWeak !== undefined ? w.isWeak : true 
         }));
         return wordsDb;
     }
 
-    // 儲存/更新單字
     function saveWord() {
         const eng = document.getElementById('eng-input').value.trim();
         const chi = document.getElementById('chi-input').value.trim();
         const sentence = document.getElementById('sentence-input').value.trim();
 
-        if (!eng || !chi) {
-            alert('單字和意思一定要填喔！');
-            return;
-        }
+        if (!eng || !chi) { alert('單字和意思一定要填喔！'); return; }
 
         let words = loadWords();
 
         if (editingWordIndex !== null) {
-            // 修改模式：直接覆蓋原本的單字
             words[editingWordIndex] = { ...words[editingWordIndex], eng, chi, sentence };
-            alert('修改成功！');
-            cancelEdit(); // 退出修改模式
+            alert('修改成功！'); cancelEdit(); 
         } else {
-            // 新增模式
             const existingIndex = words.findIndex(w => w.eng.toLowerCase() === eng.toLowerCase());
             if (existingIndex !== -1) {
                 const confirmOverwrite = confirm(`單字庫中已經有「${eng}」了！\n你要覆蓋舊資料嗎？`);
-                if (confirmOverwrite) {
-                    words[existingIndex] = { eng, chi, sentence, isWeak: true };
-                } else return;
-            } else {
-                words.push({ eng, chi, sentence, isWeak: true });
-            }
+                if (confirmOverwrite) words[existingIndex] = { eng, chi, sentence, isWeak: true };
+                else return;
+            } else words.push({ eng, chi, sentence, isWeak: true });
         }
 
         localStorage.setItem('myVocab', JSON.stringify(words));
-        clearInputs();
-        updateStatus();
-        renderWordList(); // 如果列表開著就刷新它
+        clearInputs(); updateStatus();
+        if (document.getElementById('word-list-container').style.display === 'block') renderWordList(); 
         if(editingWordIndex === null) speakText(eng);
     }
 
@@ -199,73 +189,47 @@
         document.getElementById('sentence-input').value = '';
     }
 
-    // 啟動修改模式
     function editWord(index) {
-        let words = loadWords();
-        const word = words[index];
-        
+        let words = loadWords(); const word = words[index];
         document.getElementById('eng-input').value = word.eng;
         document.getElementById('chi-input').value = word.chi;
         document.getElementById('sentence-input').value = word.sentence;
-        
         editingWordIndex = index;
         document.getElementById('edit-mode-banner').style.display = 'block';
         document.getElementById('save-btn').innerText = '💾 儲存修改';
         document.getElementById('cancel-edit-btn').style.display = 'block';
-        
-        // 畫面捲動到最上方
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    // 取消修改
     function cancelEdit() {
-        editingWordIndex = null;
-        clearInputs();
+        editingWordIndex = null; clearInputs();
         document.getElementById('edit-mode-banner').style.display = 'none';
         document.getElementById('save-btn').innerText = '儲存至單字集';
         document.getElementById('cancel-edit-btn').style.display = 'none';
     }
 
-    // 刪除單字
     function deleteWord(index) {
-        let words = loadWords();
-        const wordEng = words[index].eng;
-        
+        let words = loadWords(); const wordEng = words[index].eng;
         if(confirm(`確定要刪除「${wordEng}」嗎？這個動作無法復原喔！`)) {
-            words.splice(index, 1); // 移除該筆資料
-            localStorage.setItem('myVocab', JSON.stringify(words));
-            updateStatus();
-            renderWordList();
+            words.splice(index, 1); localStorage.setItem('myVocab', JSON.stringify(words));
+            updateStatus(); renderWordList();
         }
     }
 
-    // 開關單字列表
     function toggleWordList() {
         const container = document.getElementById('word-list-container');
-        if (container.style.display === 'block') {
-            container.style.display = 'none';
-        } else {
-            container.style.display = 'block';
-            renderWordList();
-        }
+        if (container.style.display === 'block') container.style.display = 'none';
+        else { container.style.display = 'block'; renderWordList(); }
     }
 
-    // 渲染單字列表
     function renderWordList() {
         const container = document.getElementById('word-list-container');
         let words = loadWords();
-        
-        if (words.length === 0) {
-            container.innerHTML = '<div style="text-align:center; color:#718096; padding:20px;">目前單字本是空的</div>';
-            return;
-        }
-
-        // 反轉陣列讓最新加入的在最上面
+        if (words.length === 0) { container.innerHTML = '<div style="text-align:center; color:#718096; padding:20px;">目前單字本是空的</div>'; return; }
         let html = '';
         words.forEach((word, index) => {
             const tagClass = word.isWeak ? 'list-tag weak' : 'list-tag';
             const tagText = word.isWeak ? '🔥 待加強' : '✅ 已記住';
-            
             html += `
             <div class="list-item">
                 <div class="list-eng">${word.eng} <span class="${tagClass}">${tagText}</span></div>
@@ -279,61 +243,34 @@
         container.innerHTML = html;
     }
 
-    // 資料匯出 (產生 JSON 檔下載)
     function exportData() {
         let words = localStorage.getItem('myVocab') || '[]';
-        if (words === '[]') {
-            alert('單字庫是空的，沒有東西可以匯出！');
-            return;
-        }
+        if (words === '[]') { alert('單字庫是空的！'); return; }
         const blob = new Blob([words], { type: "application/json" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url;
-        a.download = `vocab_backup_${new Date().toISOString().slice(0,10)}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        a.href = url; a.download = `vocab_backup_${new Date().toISOString().slice(0,10)}.json`;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
     }
 
-    // 資料匯入 (讀取 JSON 檔)
     function importData(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-
+        const file = event.target.files[0]; if (!file) return;
         const reader = new FileReader();
         reader.onload = function(e) {
             try {
                 const importedWords = JSON.parse(e.target.result);
                 if (!Array.isArray(importedWords)) throw new Error("格式錯誤");
-                
-                const confirmImport = confirm(`偵測到備份檔內有 ${importedWords.length} 個單字。\n你要「取代」現有單字，還是「合併」進現有單字本？\n\n按下「確定」= 取代現有\n按下「取消」= 合併進去`);
-                
+                const confirmImport = confirm(`偵測到備份檔內有 ${importedWords.length} 個單字。\n按下「確定」= 取代現有單字\n按下「取消」= 合併進去`);
                 let currentWords = loadWords();
-                if (confirmImport) {
-                    localStorage.setItem('myVocab', JSON.stringify(importedWords));
-                } else {
-                    // 簡單合併，這裡不處理重複，直接接在後面
-                    const merged = currentWords.concat(importedWords);
-                    localStorage.setItem('myVocab', JSON.stringify(merged));
-                }
-                
-                alert('匯入成功！');
-                updateStatus();
-                if (document.getElementById('word-list-container').style.display === 'block') {
-                    renderWordList();
-                }
-            } catch (error) {
-                alert('檔案格式錯誤，無法匯入！請確保這是由本系統匯出的 JSON 檔案。');
-            }
+                if (confirmImport) localStorage.setItem('myVocab', JSON.stringify(importedWords));
+                else localStorage.setItem('myVocab', JSON.stringify(currentWords.concat(importedWords)));
+                alert('匯入成功！'); updateStatus();
+                if (document.getElementById('word-list-container').style.display === 'block') renderWordList();
+            } catch (error) { alert('檔案格式錯誤，無法匯入！'); }
         };
-        reader.readAsText(file);
-        // 清空 input，允許重複匯入同一個檔案
-        event.target.value = '';
+        reader.readAsText(file); event.target.value = '';
     }
 
-    /* 以下保留原本的 API、字典、出題功能 */
     async function fetchExample() {
         const eng = document.getElementById('eng-input').value.trim();
         const sentenceInput = document.getElementById('sentence-input');
@@ -342,20 +279,14 @@
         try {
             const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${eng}`);
             if (!response.ok) throw new Error('API 找不到單字');
-            const data = await response.json();
-            let foundExample = '';
+            const data = await response.json(); let foundExample = '';
             for (let meaning of data[0].meanings) {
-                for (let def of meaning.definitions) {
-                    if (def.example) { foundExample = def.example; break; }
-                }
+                for (let def of meaning.definitions) { if (def.example) { foundExample = def.example; break; } }
                 if (foundExample) break;
             }
             if (foundExample) sentenceInput.value = foundExample;
             else { alert('沒有找到例句，建議查閱劍橋字典。'); sentenceInput.placeholder = ""; }
-        } catch (error) {
-            alert('抓不到例句，建議改用右方的「查劍橋字典」功能。');
-            sentenceInput.placeholder = "";
-        }
+        } catch (error) { alert('抓不到例句，建議改用右方的「查劍橋字典」功能。'); sentenceInput.placeholder = ""; }
     }
 
     function openDictionary() {
@@ -364,31 +295,71 @@
         window.open(`https://dictionary.cambridge.org/dictionary/english-chinese-traditional/${encodeURIComponent(eng)}`, '_blank');
     }
 
+    /* --- 出題邏輯更新 --- */
     function generateQuiz() {
         let words = loadWords();
         if (words.length === 0) { alert('請先新增單字！'); return; }
+
         let weakWordsIndices = words.map((w, i) => w.isWeak ? i : -1).filter(i => i !== -1);
         if (weakWordsIndices.length > 0 && Math.random() < 0.6) {
             currentQuizWordIndex = weakWordsIndices[Math.floor(Math.random() * weakWordsIndices.length)];
         } else {
             currentQuizWordIndex = Math.floor(Math.random() * words.length);
         }
+        
         const word = words[currentQuizWordIndex];
+        const mode = document.getElementById('quiz-mode').value;
+
+        // UI 狀態重置
         document.getElementById('quiz-area').style.display = 'block';
         document.getElementById('answer-area').style.display = 'none';
         document.getElementById('show-ans-btn').style.display = 'block';
-        document.getElementById('question-word').innerText = word.eng;
         document.getElementById('weak-tag').style.display = word.isWeak ? 'inline-block' : 'none';
-        speakText(word.eng);
+        
+        // 判斷測驗模式
+        if (mode === 'en2zh') {
+            document.getElementById('question-word').innerText = word.eng;
+            document.getElementById('speak-word-btn').style.display = 'inline-block';
+            document.getElementById('spelling-input-area').style.display = 'none';
+            speakText(word.eng); // 看英文模式自動發音
+        } else {
+            document.getElementById('question-word').innerText = word.chi;
+            document.getElementById('speak-word-btn').style.display = 'none'; // 隱藏發音避免作弊
+            document.getElementById('spelling-input-area').style.display = 'block';
+            document.getElementById('spelling-input').value = ''; // 清空拼字框
+        }
     }
 
     function showAnswer() {
         if (currentQuizWordIndex === null) return;
         const word = wordsDb[currentQuizWordIndex];
+        const mode = document.getElementById('quiz-mode').value;
+        
         document.getElementById('answer-area').style.display = 'block';
         document.getElementById('show-ans-btn').style.display = 'none';
-        document.getElementById('answer-word').innerText = word.chi;
-        document.getElementById('answer-sentence').innerText = word.sentence ? `例句：${word.sentence}` : '無例句';
+        
+        // 根據模式顯示對應的答案
+        if (mode === 'en2zh') {
+            document.getElementById('answer-word').innerText = word.chi;
+        } else {
+            document.getElementById('answer-word').innerText = word.eng;
+            speakText(word.eng); // 中翻英模式在公布答案時唸出英文
+            
+            // 簡單比對拼寫框的內容
+            const userSpell = document.getElementById('spelling-input').value.trim().toLowerCase();
+            if(userSpell !== '' && userSpell !== word.eng.toLowerCase()) {
+                document.getElementById('answer-word').innerHTML = `<span style="text-decoration:line-through; color:#718096; font-size:18px;">${document.getElementById('spelling-input').value}</span> <br> ${word.eng}`;
+            }
+        }
+
+        // 處理例句與發音按鈕
+        if (word.sentence) {
+            document.getElementById('answer-sentence').innerText = `例句：${word.sentence}`;
+            document.getElementById('speak-sentence-btn').style.display = 'block';
+        } else {
+            document.getElementById('answer-sentence').innerText = '無例句';
+            document.getElementById('speak-sentence-btn').style.display = 'none';
+        }
     }
 
     function markWord(isRemembered) {
@@ -400,17 +371,25 @@
         generateQuiz(); 
     }
 
+    /* --- 發音控制 (預設英國腔) --- */
     function speakText(text) {
         if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel(); // 停止先前的發音
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = 'en-GB'; 
-            utterance.rate = 0.9; 
+            utterance.rate = 0.85; // 放慢一點點更清楚
             window.speechSynthesis.speak(utterance);
         }
     }
     
     function speakWord() {
         if (currentQuizWordIndex !== null) speakText(wordsDb[currentQuizWordIndex].eng);
+    }
+    
+    function speakSentence() {
+        if (currentQuizWordIndex !== null && wordsDb[currentQuizWordIndex].sentence) {
+            speakText(wordsDb[currentQuizWordIndex].sentence);
+        }
     }
 
     function updateStatus() {
