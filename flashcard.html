@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <!-- 這行是確保在手機上能正確顯示比例的關鍵 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>我的單字卡</title>
+    <style>
+        :root {
+            --primary-color: #4A90E2;
+            --bg-color: #F5F7FA;
+            --card-bg: #FFFFFF;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 20px;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            width: 100%;
+            max-width: 400px; /* 適合手機螢幕的最大寬度 */
+        }
+        h1 {
+            text-align: center;
+            color: var(--primary-color);
+            font-size: 24px;
+        }
+        .section {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-sizing: border-box; /* 讓 padding 不會撐破寬度 */
+            font-size: 16px; /* 避免 iOS 點擊輸入框時自動放大 */
+        }
+        button {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            background-color: var(--primary-color);
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        button:active {
+            opacity: 0.8;
+        }
+        .btn-secondary {
+            background-color: #E2E8F0;
+            color: #4A5568;
+        }
+        #quiz-area {
+            display: none; /* 初始隱藏出題區 */
+            text-align: center;
+        }
+        #question-word {
+            font-size: 32px;
+            font-weight: bold;
+            margin: 20px 0;
+            color: #2D3748;
+        }
+        #answer-word {
+            font-size: 24px;
+            color: #E53E3E;
+            margin: 20px 0;
+            min-height: 30px; /* 預留空間避免畫面跳動 */
+        }
+        .status {
+            text-align: center;
+            font-size: 14px;
+            color: #718096;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>📚 我的單字卡</h1>
+
+    <!-- 儲存單字區塊 -->
+    <div class="section">
+        <input type="text" id="eng-input" placeholder="輸入英文單字 (例: Apple)">
+        <input type="text" id="chi-input" placeholder="輸入中文意思 (例: 蘋果)">
+        <button onclick="saveWord()">儲存至單字集</button>
+        <div class="status" id="db-status">目前已儲存 0 個單字</div>
+    </div>
+
+    <!-- 出題與測驗區塊 -->
+    <div class="section">
+        <button onclick="generateQuiz()" class="btn-secondary">🎲 隨機出題</button>
+        
+        <div id="quiz-area">
+            <div id="question-word"></div>
+            <button onclick="showAnswer()">👀 顯示答案</button>
+            <div id="answer-word"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 網頁載入時，更新目前單字數量
+    document.addEventListener("DOMContentLoaded", updateStatus);
+
+    let currentQuizWord = null;
+
+    // 1. 儲存單字功能
+    function saveWord() {
+        const eng = document.getElementById('eng-input').value.trim();
+        const chi = document.getElementById('chi-input').value.trim();
+
+        if (!eng || !chi) {
+            alert('請輸入英文單字與中文意思！');
+            return;
+        }
+
+        // 從 localStorage 取得現有的單字陣列，若無則建立空陣列
+        let words = JSON.parse(localStorage.getItem('myVocab') || '[]');
+        
+        // 將新單字加入陣列
+        words.push({ eng: eng, chi: chi });
+        
+        // 存回 localStorage
+        localStorage.setItem('myVocab', JSON.stringify(words));
+
+        // 清空輸入框並更新狀態
+        document.getElementById('eng-input').value = '';
+        document.getElementById('chi-input').value = '';
+        updateStatus();
+        alert('儲存成功！');
+    }
+
+    // 2. 隨機出題功能
+    function generateQuiz() {
+        let words = JSON.parse(localStorage.getItem('myVocab') || '[]');
+        
+        if (words.length === 0) {
+            alert('你的單字集是空的，請先新增單字！');
+            return;
+        }
+
+        // 隨機抽取一個單字
+        const randomIndex = Math.floor(Math.random() * words.length);
+        currentQuizWord = words[randomIndex];
+
+        // 顯示題目區塊，隱藏上一次的答案
+        document.getElementById('quiz-area').style.display = 'block';
+        document.getElementById('question-word').innerText = currentQuizWord.eng;
+        document.getElementById('answer-word').innerText = ''; // 先清空答案
+    }
+
+    // 3. 顯示答案功能
+    function showAnswer() {
+        if (currentQuizWord) {
+            document.getElementById('answer-word').innerText = currentQuizWord.chi;
+        }
+    }
+
+    // 更新介面上的單字數量統計
+    function updateStatus() {
+        let words = JSON.parse(localStorage.getItem('myVocab') || '[]');
+        document.getElementById('db-status').innerText = `目前已儲存 ${words.length} 個單字`;
+    }
+</script>
+
+</body>
+</html>
