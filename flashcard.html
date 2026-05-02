@@ -68,6 +68,7 @@
         }
         button:active { opacity: 0.8; }
         .btn-secondary { background-color: #E2E8F0; color: #4A5568; }
+        .btn-api { background-color: #ECC94B; color: #744210; font-size: 14px; padding: 10px; margin-bottom: 12px;}
         .btn-danger { background-color: var(--danger-color); }
         .btn-success { background-color: var(--success-color); }
         
@@ -80,7 +81,7 @@
         }
         #answer-area { display: none; margin-top: 20px; border-top: 1px dashed #CBD5E0; padding-top: 20px; }
         #answer-word { font-size: 24px; color: var(--danger-color); font-weight: bold; margin-bottom: 10px; }
-        #answer-sentence { font-size: 16px; color: #4A5568; margin-bottom: 20px; font-style: italic; line-height: 1.5; }
+        #answer-sentence { font-size: 16px; color: #4A5568; margin-bottom: 20px; font-style: italic; line-height: 1.5; text-align: left;}
         
         .action-buttons { display: flex; gap: 10px; }
         .action-buttons button { margin-bottom: 0; }
@@ -97,7 +98,11 @@
     <div class="section">
         <input type="text" id="eng-input" placeholder="英文單字 (必填)">
         <input type="text" id="chi-input" placeholder="中文意思 (必填)">
-        <textarea id="sentence-input" placeholder="輸入例句或用法筆記 (選填)"></textarea>
+        
+        <!-- 新增 API 自動抓例句按鈕 -->
+        <button onclick="fetchExample()" class="btn-api">✨ 自動找例句 (需連網)</button>
+        <textarea id="sentence-input" placeholder="輸入例句或點擊上方按鈕自動生成 (選填)"></textarea>
+        
         <button onclick="saveWord()">儲存至單字集</button>
         <div class="status" id="db-status"></div>
     </div>
@@ -117,7 +122,6 @@
                 <div id="answer-word"></div>
                 <div id="answer-sentence"></div>
                 
-                <!-- 熟悉度回饋 -->
                 <div class="status" style="margin-bottom:10px;">你記得這個單字嗎？</div>
                 <div class="action-buttons">
                     <button class="btn-danger" onclick="markWord(false)">忘記了 / 待加強</button>
@@ -133,19 +137,18 @@
     let currentQuizWordIndex = null;
     let wordsDb = [];
 
-    // 1. 載入資料庫 (包含兼容舊版資料)
+    // 1. 載入資料庫
     function loadWords() {
         wordsDb = JSON.parse(localStorage.getItem('myVocab') || '[]');
-        // 為舊資料補上新欄位
         wordsDb = wordsDb.map(w => ({
             ...w,
             sentence: w.sentence || '',
-            isWeak: w.isWeak !== undefined ? w.isWeak : true // 預設新單字為待加強
+            isWeak: w.isWeak !== undefined ? w.isWeak : true 
         }));
         return wordsDb;
     }
 
-    // 2. 儲存單字
+    // 2. 儲存單字 (加入重複檢查與覆蓋邏輯)
     function saveWord() {
         const eng = document.getElementById('eng-input').value.trim();
         const chi = document.getElementById('chi-input').value.trim();
@@ -157,7 +160,26 @@
         }
 
         let words = loadWords();
-        words.push({ eng, chi, sentence, isWeak: true });
+        
+        // 檢查是否重複 (忽略大小寫)
+        const existingIndex = words.findIndex(w => w.eng.toLowerCase() === eng.toLowerCase());
+
+        if (existingIndex !== -1) {
+            // 單字已存在，詢問是否覆蓋
+            const confirmOverwrite = confirm(`單字庫中已經有「${eng}」了！\n你要用現在輸入的意思和例句覆蓋舊資料嗎？`);
+            if (confirmOverwrite) {
+                // 覆蓋舊資料
+                words[existingIndex] = { eng, chi, sentence, isWeak: true };
+                alert(`已成功更新「${eng}」的資料！`);
+            } else {
+                // 不覆蓋，直接結束執行
+                return;
+            }
+        } else {
+            // 全新單字，直接加入
+            words.push({ eng, chi, sentence, isWeak: true });
+        }
+
         localStorage.setItem('myVocab', JSON.stringify(words));
 
         // 清空輸入框
@@ -165,30 +187,67 @@
         document.getElementById('chi-input').value = '';
         document.getElementById('sentence-input').value = '';
         updateStatus();
-        
-        // 自動唸出剛儲存的單字加強印象
         speakText(eng);
     }
 
-    // 3. 隨機出題 (演算法：60%機率抽「待加強」，40%機率抽「全庫」)
+    // 3. 自動抓取例句 (串接 Free Dictionary API)
+    async function fetchExample() {
+        const eng = document.getElementById('eng-input').value.trim();
+        const sentenceInput = document.getElementById('sentence-input');
+
+        if (!eng) {
+            alert('請先輸入英文單字，我才能幫你找例句喔！');
+            return;
+        }
+
+        sentenceInput.placeholder = "正在網路上搜尋例句中...";
+        
+        try {
+            // 呼叫開源免費字典 API
+            const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${eng}`);
+            if (!response.ok) throw new Error('API 找不到單字');
+            
+            const data = await response.json();
+            let foundExample = '';
+
+            // 拆解 API 回傳的 JSON 結構，尋找第一句可用的例句
+            for (let meaning of data[0].meanings) {
+                for (let def of meaning.definitions) {
+                    if (def.example) {
+                        foundExample = def.example;
+                        break;
+                    }
+                }
+                if (foundExample) break;
+            }
+
+            if (foundExample) {
+                sentenceInput.value = foundExample;
+            } else {
+                alert('這本開源字典裡剛好沒有收錄這個單字的例句，請換個單字或手動輸入。');
+                sentenceInput.placeholder = "輸入例句或點擊上方按鈕自動生成 (選填)";
+            }
+        } catch (error) {
+            alert('抓取例句失敗！請確認手機是否有連上網路，或是單字拼錯了。');
+            sentenceInput.placeholder = "輸入例句或點擊上方按鈕自動生成 (選填)";
+        }
+    }
+
+    // 4. 隨機出題
     function generateQuiz() {
         let words = loadWords();
         if (words.length === 0) { alert('請先新增單字！'); return; }
 
         let weakWordsIndices = words.map((w, i) => w.isWeak ? i : -1).filter(i => i !== -1);
         
-        // 決定抽題邏輯
         if (weakWordsIndices.length > 0 && Math.random() < 0.6) {
-            // 抽待加強的單字
             currentQuizWordIndex = weakWordsIndices[Math.floor(Math.random() * weakWordsIndices.length)];
         } else {
-            // 隨機全範圍
             currentQuizWordIndex = Math.floor(Math.random() * words.length);
         }
 
         const word = words[currentQuizWordIndex];
 
-        // UI 狀態重置
         document.getElementById('quiz-area').style.display = 'block';
         document.getElementById('answer-area').style.display = 'none';
         document.getElementById('show-ans-btn').style.display = 'block';
@@ -196,10 +255,10 @@
         document.getElementById('question-word').innerText = word.eng;
         document.getElementById('weak-tag').style.display = word.isWeak ? 'inline-block' : 'none';
         
-        speakText(word.eng); // 出題時自動唸一次
+        speakText(word.eng);
     }
 
-    // 4. 顯示答案
+    // 5. 顯示答案
     function showAnswer() {
         if (currentQuizWordIndex === null) return;
         const word = wordsDb[currentQuizWordIndex];
@@ -208,30 +267,26 @@
         document.getElementById('show-ans-btn').style.display = 'none';
         
         document.getElementById('answer-word').innerText = word.chi;
-        document.getElementById('answer-sentence').innerText = word.sentence ? `例句：${word.sentence}` : '';
+        document.getElementById('answer-sentence').innerText = word.sentence ? `例句：${word.sentence}` : '無例句';
     }
 
-    // 5. 標記熟悉度
+    // 6. 標記熟悉度
     function markWord(isRemembered) {
         if (currentQuizWordIndex === null) return;
-        
-        // 如果記住了，就把 isWeak 改為 false；忘記了就設為 true
         wordsDb[currentQuizWordIndex].isWeak = !isRemembered;
         localStorage.setItem('myVocab', JSON.stringify(wordsDb));
         
         updateStatus();
-        generateQuiz(); // 直接進入下一題
+        generateQuiz(); 
     }
 
-    // 6. 語音發音功能 (Web Speech API)
+    // 7. 語音發音
     function speakText(text) {
         if ('speechSynthesis' in window) {
             const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'en-GB'; // 設定為英國口音
-            utterance.rate = 0.9; // 稍微放慢語速聽得更清楚
+            utterance.lang = 'en-GB'; 
+            utterance.rate = 0.9; 
             window.speechSynthesis.speak(utterance);
-        } else {
-            console.log("您的瀏覽器不支援發音功能");
         }
     }
     
@@ -241,7 +296,7 @@
         }
     }
 
-    // 7. 更新狀態文字
+    // 8. 更新狀態
     function updateStatus() {
         let words = loadWords();
         let weakCount = words.filter(w => w.isWeak).length;
