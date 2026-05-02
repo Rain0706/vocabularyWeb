@@ -2,33 +2,35 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <!-- 這行是確保在手機上能正確顯示比例的關鍵 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>我的單字卡</title>
+    <title>我的高階單字卡</title>
     <style>
         :root {
-            --primary-color: #4A90E2;
-            --bg-color: #F5F7FA;
+            --primary-color: #2B6CB0;
+            --bg-color: #EDF2F7;
             --card-bg: #FFFFFF;
+            --danger-color: #E53E3E;
+            --success-color: #38A169;
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg-color);
             margin: 0;
-            padding: 20px;
-            color: #333;
+            padding: 15px;
+            color: #2D3748;
             display: flex;
             flex-direction: column;
             align-items: center;
         }
         .container {
             width: 100%;
-            max-width: 400px; /* 適合手機螢幕的最大寬度 */
+            max-width: 450px;
         }
         h1 {
             text-align: center;
             color: var(--primary-color);
-            font-size: 24px;
+            font-size: 22px;
+            margin-bottom: 20px;
         }
         .section {
             background-color: var(--card-bg);
@@ -37,14 +39,19 @@
             margin-bottom: 20px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.05);
         }
-        input[type="text"] {
+        input[type="text"], textarea {
             width: 100%;
             padding: 12px;
-            margin-bottom: 10px;
-            border: 1px solid #ddd;
+            margin-bottom: 12px;
+            border: 1px solid #CBD5E0;
             border-radius: 8px;
-            box-sizing: border-box; /* 讓 padding 不會撐破寬度 */
-            font-size: 16px; /* 避免 iOS 點擊輸入框時自動放大 */
+            box-sizing: border-box;
+            font-size: 16px;
+            font-family: inherit;
+        }
+        textarea {
+            resize: vertical;
+            min-height: 80px;
         }
         button {
             width: 100%;
@@ -57,125 +64,188 @@
             font-weight: bold;
             cursor: pointer;
             margin-bottom: 10px;
+            transition: opacity 0.2s;
         }
-        button:active {
-            opacity: 0.8;
+        button:active { opacity: 0.8; }
+        .btn-secondary { background-color: #E2E8F0; color: #4A5568; }
+        .btn-danger { background-color: var(--danger-color); }
+        .btn-success { background-color: var(--success-color); }
+        
+        /* 出題區樣式 */
+        #quiz-area { display: none; text-align: center; }
+        #question-word { font-size: 36px; font-weight: bold; margin: 15px 0; color: #1A202C; }
+        .speech-btn {
+            background: none; color: var(--primary-color); border: 2px solid var(--primary-color);
+            padding: 8px 16px; border-radius: 20px; width: auto; font-size: 14px; margin-bottom: 20px;
         }
-        .btn-secondary {
-            background-color: #E2E8F0;
-            color: #4A5568;
-        }
-        #quiz-area {
-            display: none; /* 初始隱藏出題區 */
-            text-align: center;
-        }
-        #question-word {
-            font-size: 32px;
-            font-weight: bold;
-            margin: 20px 0;
-            color: #2D3748;
-        }
-        #answer-word {
-            font-size: 24px;
-            color: #E53E3E;
-            margin: 20px 0;
-            min-height: 30px; /* 預留空間避免畫面跳動 */
-        }
-        .status {
-            text-align: center;
-            font-size: 14px;
-            color: #718096;
-            margin-bottom: 10px;
-        }
+        #answer-area { display: none; margin-top: 20px; border-top: 1px dashed #CBD5E0; padding-top: 20px; }
+        #answer-word { font-size: 24px; color: var(--danger-color); font-weight: bold; margin-bottom: 10px; }
+        #answer-sentence { font-size: 16px; color: #4A5568; margin-bottom: 20px; font-style: italic; line-height: 1.5; }
+        
+        .action-buttons { display: flex; gap: 10px; }
+        .action-buttons button { margin-bottom: 0; }
+        .status { text-align: center; font-size: 13px; color: #718096; margin-top: 10px; }
+        .tag { font-size: 12px; padding: 4px 8px; border-radius: 4px; background: #FEFCBF; color: #B7791F; display: inline-block; margin-bottom: 10px;}
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>📚 我的單字卡</h1>
+    <h1>🚀 雅思級單字衝刺庫</h1>
 
     <!-- 儲存單字區塊 -->
     <div class="section">
-        <input type="text" id="eng-input" placeholder="輸入英文單字 (例: Apple)">
-        <input type="text" id="chi-input" placeholder="輸入中文意思 (例: 蘋果)">
+        <input type="text" id="eng-input" placeholder="英文單字 (必填)">
+        <input type="text" id="chi-input" placeholder="中文意思 (必填)">
+        <textarea id="sentence-input" placeholder="輸入例句或用法筆記 (選填)"></textarea>
         <button onclick="saveWord()">儲存至單字集</button>
-        <div class="status" id="db-status">目前已儲存 0 個單字</div>
+        <div class="status" id="db-status"></div>
     </div>
 
     <!-- 出題與測驗區塊 -->
     <div class="section">
-        <button onclick="generateQuiz()" class="btn-secondary">🎲 隨機出題</button>
+        <button onclick="generateQuiz()" class="btn-secondary">🎲 隨機出題 (優先考弱點)</button>
         
         <div id="quiz-area">
+            <div id="weak-tag" class="tag" style="display: none;">🔥 待加強單字</div>
             <div id="question-word"></div>
-            <button onclick="showAnswer()">👀 顯示答案</button>
-            <div id="answer-word"></div>
+            <button class="speech-btn" onclick="speakWord()">🔊 聽發音</button>
+            
+            <button id="show-ans-btn" onclick="showAnswer()">👀 顯示答案與例句</button>
+            
+            <div id="answer-area">
+                <div id="answer-word"></div>
+                <div id="answer-sentence"></div>
+                
+                <!-- 熟悉度回饋 -->
+                <div class="status" style="margin-bottom:10px;">你記得這個單字嗎？</div>
+                <div class="action-buttons">
+                    <button class="btn-danger" onclick="markWord(false)">忘記了 / 待加強</button>
+                    <button class="btn-success" onclick="markWord(true)">記住了！</button>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
-    // 網頁載入時，更新目前單字數量
     document.addEventListener("DOMContentLoaded", updateStatus);
+    let currentQuizWordIndex = null;
+    let wordsDb = [];
 
-    let currentQuizWord = null;
+    // 1. 載入資料庫 (包含兼容舊版資料)
+    function loadWords() {
+        wordsDb = JSON.parse(localStorage.getItem('myVocab') || '[]');
+        // 為舊資料補上新欄位
+        wordsDb = wordsDb.map(w => ({
+            ...w,
+            sentence: w.sentence || '',
+            isWeak: w.isWeak !== undefined ? w.isWeak : true // 預設新單字為待加強
+        }));
+        return wordsDb;
+    }
 
-    // 1. 儲存單字功能
+    // 2. 儲存單字
     function saveWord() {
         const eng = document.getElementById('eng-input').value.trim();
         const chi = document.getElementById('chi-input').value.trim();
+        const sentence = document.getElementById('sentence-input').value.trim();
 
         if (!eng || !chi) {
-            alert('請輸入英文單字與中文意思！');
+            alert('單字和意思一定要填喔！');
             return;
         }
 
-        // 從 localStorage 取得現有的單字陣列，若無則建立空陣列
-        let words = JSON.parse(localStorage.getItem('myVocab') || '[]');
-        
-        // 將新單字加入陣列
-        words.push({ eng: eng, chi: chi });
-        
-        // 存回 localStorage
+        let words = loadWords();
+        words.push({ eng, chi, sentence, isWeak: true });
         localStorage.setItem('myVocab', JSON.stringify(words));
 
-        // 清空輸入框並更新狀態
+        // 清空輸入框
         document.getElementById('eng-input').value = '';
         document.getElementById('chi-input').value = '';
+        document.getElementById('sentence-input').value = '';
         updateStatus();
-        alert('儲存成功！');
-    }
-
-    // 2. 隨機出題功能
-    function generateQuiz() {
-        let words = JSON.parse(localStorage.getItem('myVocab') || '[]');
         
-        if (words.length === 0) {
-            alert('你的單字集是空的，請先新增單字！');
-            return;
+        // 自動唸出剛儲存的單字加強印象
+        speakText(eng);
+    }
+
+    // 3. 隨機出題 (演算法：60%機率抽「待加強」，40%機率抽「全庫」)
+    function generateQuiz() {
+        let words = loadWords();
+        if (words.length === 0) { alert('請先新增單字！'); return; }
+
+        let weakWordsIndices = words.map((w, i) => w.isWeak ? i : -1).filter(i => i !== -1);
+        
+        // 決定抽題邏輯
+        if (weakWordsIndices.length > 0 && Math.random() < 0.6) {
+            // 抽待加強的單字
+            currentQuizWordIndex = weakWordsIndices[Math.floor(Math.random() * weakWordsIndices.length)];
+        } else {
+            // 隨機全範圍
+            currentQuizWordIndex = Math.floor(Math.random() * words.length);
         }
 
-        // 隨機抽取一個單字
-        const randomIndex = Math.floor(Math.random() * words.length);
-        currentQuizWord = words[randomIndex];
+        const word = words[currentQuizWordIndex];
 
-        // 顯示題目區塊，隱藏上一次的答案
+        // UI 狀態重置
         document.getElementById('quiz-area').style.display = 'block';
-        document.getElementById('question-word').innerText = currentQuizWord.eng;
-        document.getElementById('answer-word').innerText = ''; // 先清空答案
+        document.getElementById('answer-area').style.display = 'none';
+        document.getElementById('show-ans-btn').style.display = 'block';
+        
+        document.getElementById('question-word').innerText = word.eng;
+        document.getElementById('weak-tag').style.display = word.isWeak ? 'inline-block' : 'none';
+        
+        speakText(word.eng); // 出題時自動唸一次
     }
 
-    // 3. 顯示答案功能
+    // 4. 顯示答案
     function showAnswer() {
-        if (currentQuizWord) {
-            document.getElementById('answer-word').innerText = currentQuizWord.chi;
+        if (currentQuizWordIndex === null) return;
+        const word = wordsDb[currentQuizWordIndex];
+        
+        document.getElementById('answer-area').style.display = 'block';
+        document.getElementById('show-ans-btn').style.display = 'none';
+        
+        document.getElementById('answer-word').innerText = word.chi;
+        document.getElementById('answer-sentence').innerText = word.sentence ? `例句：${word.sentence}` : '';
+    }
+
+    // 5. 標記熟悉度
+    function markWord(isRemembered) {
+        if (currentQuizWordIndex === null) return;
+        
+        // 如果記住了，就把 isWeak 改為 false；忘記了就設為 true
+        wordsDb[currentQuizWordIndex].isWeak = !isRemembered;
+        localStorage.setItem('myVocab', JSON.stringify(wordsDb));
+        
+        updateStatus();
+        generateQuiz(); // 直接進入下一題
+    }
+
+    // 6. 語音發音功能 (Web Speech API)
+    function speakText(text) {
+        if ('speechSynthesis' in window) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'en-GB'; // 設定為英國口音
+            utterance.rate = 0.9; // 稍微放慢語速聽得更清楚
+            window.speechSynthesis.speak(utterance);
+        } else {
+            console.log("您的瀏覽器不支援發音功能");
+        }
+    }
+    
+    function speakWord() {
+        if (currentQuizWordIndex !== null) {
+            speakText(wordsDb[currentQuizWordIndex].eng);
         }
     }
 
-    // 更新介面上的單字數量統計
+    // 7. 更新狀態文字
     function updateStatus() {
-        let words = JSON.parse(localStorage.getItem('myVocab') || '[]');
-        document.getElementById('db-status').innerText = `目前已儲存 ${words.length} 個單字`;
+        let words = loadWords();
+        let weakCount = words.filter(w => w.isWeak).length;
+        document.getElementById('db-status').innerText = `總字數: ${words.length} | 待加強: ${weakCount}`;
     }
 </script>
 
